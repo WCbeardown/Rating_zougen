@@ -261,10 +261,10 @@ if df_after is None:
 
         # ----- 第3セル処理（増減計算） -----
 def normalize_member_id(x):
-            x_str = str(x)
-            if len(x_str) == 8:
-                x_str = x_str[1:]
-            return int(x_str)
+    x_str = str(x)
+    if len(x_str) == 8:
+        x_str = x_str[1:]
+    return int(x_str)
 
 df_before["会員番号"] = df_before["会員番号"].apply(normalize_member_id)
 df_after["会員番号"] = df_after["会員番号"].apply(normalize_member_id)
