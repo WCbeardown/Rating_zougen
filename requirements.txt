@@ -1,11 +1,6 @@
-streamlit
-numpy
-pandas
-requests
-datetime 
-matplotlib
-lxml
-pytesseract
+streamlit>=1.30.0
+pandas>=2.0.0
+requests>=2.31.0
 beautifulsoup4>=4.12.2
 lxml>=4.9.3
 html5lib>=1.1
