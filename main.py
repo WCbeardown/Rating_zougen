@@ -146,10 +146,10 @@ if st.button("増減表示"):
                     records.append({'会員番号': member_id, '氏名': name, '大会前レーティング': rating_before})
             i += 1
 
-        df_before = pd.DataFrame(records)
+df_before = pd.DataFrame(records)
 
-        # ----- 第2セル処理（羽曳野レーティング読み込み） -----
-        import time
+# ----- 第2セル処理（羽曳野レーティング読み込み） -----
+import time
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
