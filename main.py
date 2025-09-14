@@ -205,11 +205,11 @@ def get_habikino_sheet_url(kaisu):
     return None
 
 
-    def load_habikino(kaisu):
+def load_habikino(kaisu):
             st.write("URL取得開始")
             url = get_habikino_sheet_url(kaisu)
             st.write("URL = ", url)
-            
+
             url = get_habikino_sheet_url(kaisu)
             if not url:
                 st.error(f"第{kaisu}回が見つかりません")
@@ -259,29 +259,29 @@ def get_habikino_sheet_url(kaisu):
             })
             return rating_data
 
-    df_after = load_habikino(kaisu_input)
-    if df_after is None:
+df_after = load_habikino(kaisu_input)
+if df_after is None:
             st.stop()
 
         # ----- 第3セル処理（増減計算） -----
-    def normalize_member_id(x):
+def normalize_member_id(x):
             x_str = str(x)
             if len(x_str) == 8:
                 x_str = x_str[1:]
             return int(x_str)
 
-    df_before["会員番号"] = df_before["会員番号"].apply(normalize_member_id)
-    df_after["会員番号"] = df_after["会員番号"].apply(normalize_member_id)
+df_before["会員番号"] = df_before["会員番号"].apply(normalize_member_id)
+df_after["会員番号"] = df_after["会員番号"].apply(normalize_member_id)
 
-    df_merge = pd.merge(
+df_merge = pd.merge(
             df_before[["会員番号", "氏名", "大会前レーティング"]],
             df_after[["会員番号", "大会後レーティング"]],
             on="会員番号",
             how="outer"
         )
-    df_merge["増減"] = df_merge["大会後レーティング"] - df_merge["大会前レーティング"]
-    df_merge["氏名"] = df_merge["氏名"].fillna("")
-    df_merge = df_merge.sort_values("会員番号").reset_index(drop=True)
+df_merge["増減"] = df_merge["大会後レーティング"] - df_merge["大会前レーティング"]
+df_merge["氏名"] = df_merge["氏名"].fillna("")
+df_merge = df_merge.sort_values("会員番号").reset_index(drop=True)
 
-    st.subheader("大会レーティング増減結果")
-    st.dataframe(df_merge)
+st.subheader("大会レーティング増減結果")
+st.dataframe(df_merge)
