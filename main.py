@@ -7,18 +7,27 @@ import datetime
 from urllib.parse import urljoin
 
 st.title("羽曳野大会レーティング増減計算アプリ")
-
+st.caption(
+    "注意事項（言い訳）：\n"
+    "Googleの文字認識の精度によるので、写真の解像度と文字認識の程度によっては全然異なる結果になることがあります。\n"
+    "苦情は受け付けませんので、悪しからず。\n"
+    "レイティングの結果が出てから使ってください。"
+)
 # --- 1. ユーザー入力エリア ---
 st.header("ステップ1: 大会データを貼り付け")
 text_input = st.text_area(
-    "大会データをここに貼り付けてください",
+    "レイティングの参加者全体が移っている写真を用意する。\n"
+    "Googleアプリを起動して、カメラマーク「Googleレンズ」を選択\n"
+    "シャッターの横にある画像選択マークを選んで、先ほどの写真を選択\n"
+    "「テキストを選択」を選んで、選択されたテキストを「コピー」\n"
+    "このページに戻ってきて、以下の枠に「ペースト」してください。",
     height=400
 )
 
 # --- 2. 羽曳野レーティング回数入力 ---
 st.header("ステップ2: 羽曳野レーティングの回数")
 kaisu_input = st.number_input(
-    "回数を入力してください（例: 293）",
+    "第何回の大会かを入力してください（例: 293）",
     min_value=1,
     value=293,
     step=1
@@ -140,26 +149,63 @@ if st.button("増減表示"):
         df_before = pd.DataFrame(records)
 
         # ----- 第2セル処理（羽曳野レーティング読み込み） -----
-        def get_habikino_sheet_url(kaisu):
-            base_url = "https://www.cbii.kutc.kansai-u.ac.jp/tt_rating/habikino.html"
-            res = requests.get(base_url)
-            res.encoding = "shift_jis"
-            soup = BeautifulSoup(res.text, "html.parser")
-            for a in soup.find_all("a"):
-                text = a.get_text()
-                if f"{kaisu}" in text:
-                    href = a["href"].replace("./", "")
-                    href = urljoin(base_url, href)
-                    sub = requests.get(href)
-                    sub.encoding = "shift_jis"
-                    sub_soup = BeautifulSoup(sub.text, "html.parser")
-                    frame = sub_soup.find("frame") or sub_soup.find("iframe")
-                    if frame and frame.get("src"):
-                        return urljoin(href, frame["src"])
-                    return href
-            return None
+        import time
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
-        def load_habikino(kaisu):
+def get_habikino_sheet_url(kaisu):
+    """羽曳野レイティングの sheet001.htm のURLを返す"""
+    base_url = "https://www.cbii.kutc.kansai-u.ac.jp/tt_rating/habikino.html"
+
+    headers = {"User-Agent": "Mozilla/5.0"}  # ブラウザっぽくする
+    max_retry = 3
+
+    # リトライ付きで取得
+    for attempt in range(max_retry):
+        try:
+            res = requests.get(base_url, headers=headers, timeout=10)
+            res.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            print(f"接続失敗: {e}, {attempt+1}/{max_retry} 回目")
+            time.sleep(3)
+    else:
+        print("3回試しましたが接続できませんでした")
+        return None
+
+    res.encoding = "shift_jis"
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    for a in soup.find_all("a"):
+        text = a.get_text()
+        if f"{kaisu}" in text:
+            href = a["href"].replace("./", "")
+            href = urljoin(base_url, href)
+
+            # .htm ページから <frame> を探す
+            for attempt in range(max_retry):
+                try:
+                    sub = requests.get(href, headers=headers, timeout=10)
+                    sub.raise_for_status()
+                    break
+                except requests.exceptions.RequestException as e:
+                    print(f"フレームページ接続失敗: {e}, {attempt+1}/{max_retry} 回目")
+                    time.sleep(3)
+            else:
+                print(f"{kaisu}回のフレームページに接続できませんでした")
+                return None
+
+            sub.encoding = "shift_jis"
+            sub_soup = BeautifulSoup(sub.text, "html.parser")
+            frame = sub_soup.find("frame") or sub_soup.find("iframe")
+            if frame and frame.get("src"):
+                return urljoin(href, frame["src"])
+            return href
+    return None
+
+
+    def load_habikino(kaisu):
             url = get_habikino_sheet_url(kaisu)
             if not url:
                 st.error(f"第{kaisu}回が見つかりません")
@@ -209,29 +255,29 @@ if st.button("増減表示"):
             })
             return rating_data
 
-        df_after = load_habikino(kaisu_input)
-        if df_after is None:
+    df_after = load_habikino(kaisu_input)
+    if df_after is None:
             st.stop()
 
         # ----- 第3セル処理（増減計算） -----
-        def normalize_member_id(x):
+    def normalize_member_id(x):
             x_str = str(x)
             if len(x_str) == 8:
                 x_str = x_str[1:]
             return int(x_str)
 
-        df_before["会員番号"] = df_before["会員番号"].apply(normalize_member_id)
-        df_after["会員番号"] = df_after["会員番号"].apply(normalize_member_id)
+    df_before["会員番号"] = df_before["会員番号"].apply(normalize_member_id)
+    df_after["会員番号"] = df_after["会員番号"].apply(normalize_member_id)
 
-        df_merge = pd.merge(
+    df_merge = pd.merge(
             df_before[["会員番号", "氏名", "大会前レーティング"]],
             df_after[["会員番号", "大会後レーティング"]],
             on="会員番号",
             how="outer"
         )
-        df_merge["増減"] = df_merge["大会後レーティング"] - df_merge["大会前レーティング"]
-        df_merge["氏名"] = df_merge["氏名"].fillna("")
-        df_merge = df_merge.sort_values("会員番号").reset_index(drop=True)
+    df_merge["増減"] = df_merge["大会後レーティング"] - df_merge["大会前レーティング"]
+    df_merge["氏名"] = df_merge["氏名"].fillna("")
+    df_merge = df_merge.sort_values("会員番号").reset_index(drop=True)
 
-        st.subheader("大会レーティング増減結果")
-        st.dataframe(df_merge)
+    st.subheader("大会レーティング増減結果")
+    st.dataframe(df_merge)
