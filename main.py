@@ -206,10 +206,6 @@ def get_habikino_sheet_url(kaisu):
 
 
 def load_habikino(kaisu):
-            st.write("URL取得開始")
-            url = get_habikino_sheet_url(kaisu)
-            st.write("URL = ", url)
-
             url = get_habikino_sheet_url(kaisu)
             if not url:
                 st.error(f"第{kaisu}回が見つかりません")
